@@ -20,7 +20,7 @@ class ProductConllection extends ResourceCollection
         return [
             'data' => $this->collection,
             'count' => $this->collection->count(),
-            // 'paginate' => $this->collection->pagi
+            // 'paginate' => $this->collection->
         ];
     }
 }

@@ -7,25 +7,71 @@ use App\Models\productimg;
 use App\Models\propertiesproduct;
 use Illuminate\Http\Request;
 use App\Http\Resources\ProductConllection;
-use Illuminate\Contracts\Pagination\Paginator;
+use App\Http\Resources\Products;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Pagination\Paginator;
+use Illuminate\Container\Container;
 use Illuminate\Pagination\Paginator as PaginationPaginator;
+use Illuminate\Support\Facades\DB;
 
 class ProductController extends Controller
 {
     //
     public function index(Request $request)
     {
-        // return product::all();
-        // $arrFilter = [];
-        if ($request->color || $request->size) {
 
+        // if ($request->color || $request->size) {
+        //     if ($request->color && $request->size) {
+
+        //         $arrFilter = array_merge($request->color, $request->size);
+        //     } else {
+        //         if ($request->color) {
+
+
+        //             $arrFilter = $request->color;
+        //         } else {
+
+        //             $arrFilter = $request->size;
+        //         }
+        //     }
+        //     $filter = propertiesproduct::all();
+
+
+        //     // return $arrFilter;
+        //     $filter = $filter->whereIn('value', $arrFilter);
+        //     $arr = [];
+        //     foreach ($filter as $item) {
+
+        //         $arr = $item->products;
+        //     }
+        //     $product = collect($arr);
+        // } else {
+        //     $product = product::all();
+        // }
+        // if ($request->category) {
+        //     $product = $product->whereIn('categoryName', $request->category);
+        // }
+        // if ($request->time) {
+
+        //     if ($request->time == 'ASC') {
+
+        //         $product =  $product->sortBy('created_at');
+        //     } else {
+        //         $product =  $product->sortByDesc('created_at');
+        //     }
+        //     return $product;
+        // }        
+        // $product = $this->paginate($product, $perPage = 20, $page = null, $options = []);
+        // return $product;
+
+        if ($request->color || $request->size) {
             if ($request->color && $request->size) {
 
                 $arrFilter = array_merge($request->color, $request->size);
             } else {
                 if ($request->color) {
+
 
                     $arrFilter = $request->color;
                 } else {
@@ -33,47 +79,94 @@ class ProductController extends Controller
                     $arrFilter = $request->size;
                 }
             }
-            $filter = propertiesproduct::all();
-
-
             // return $arrFilter;
-            $filter = $filter->whereIn('value', $arrFilter);
-            // $arr = [];
-            foreach ($filter as $item) {
-
-                $arr = $item->products;
-            }
-            $product = collect($arr);
+            $product = product::whereHas('propertyproduct', function ($query) use ($arrFilter) {
+                $query->whereIn('value', $arrFilter);
+            })->get();
         } else {
-            // return "ok";
+
             $product = product::all();
         }
         if ($request->category) {
             $product = $product->whereIn('categoryName', $request->category);
         }
-        if ($request->time) {
 
-            if ($request->time == 'ASC') {
 
-                $product =  $product->sortBy('created_at');
-            } else {
-                $product =  $product->sortByDesc('created_at');
-            }
-            return $product;
-        }
-        // $product = $product->paginate();
-        // $product = new ProductConllection($product);
-        $product = $this->paginate($product, $perPage = 2, $page = null, $options = []);
+        $product = $this->paginate($product, 20);
+
+
+        return new ProductConllection($product);
+    }
+    public function fliter(Request $request)
+    {
+
+        // if ($request->color || $request->size) {
+        //     if ($request->color && $request->size) {
+
+        //         $arrFilter = array_merge($request->color, $request->size);
+        //     } else {
+        //         if ($request->color) {
+
+
+        //             $arrFilter = $request->color;
+        //         } else {
+
+        //             $arrFilter = $request->size;
+        //         }
+        //     }
+        //     // return $arrFilter;
+        //     $product = product::whereHas('propertyproduct', function ($query) use ($arrFilter) {
+        //         $query->whereIn('value', $arrFilter);
+        //     })->get();
+        // } else {
+
+        //     $product = product::all();
+        // }
+        // if ($request->category) {
+        //     $product = $product->whereIn('categoryName', $request->category);
+        // }
+        // $product = $this->paginate($product, 2);
+        // return new ProductConllection($product);
+        $product = DB::table('products')->inRandomOrder()->limit(20)->get();
+        // return new ProductConllection($product);
         return $product;
     }
-    public function paginate($items, $perPage = 15, $page = null, $options = [])
+
+    public static function paginate(Collection $results, $pageSize)
     {
-        $page = $page ?: (PaginationPaginator::resolveCurrentPage() ?: 1);
+        $page = Paginator::resolveCurrentPage('page');
 
-        $items = $items instanceof Collection ? $items : Collection::make($items);
+        $total = $results->count();
 
-        return new LengthAwarePaginator($items->forPage($page, $perPage), $items->count(), $perPage, $page, $options);
+        return self::paginator($results->forPage($page, $pageSize), $total, $pageSize, $page, [
+            'path' => Paginator::resolveCurrentPath(),
+            'pageName' => 'page',
+        ]);
     }
+
+    protected static function paginator($items, $total, $perPage, $currentPage, $options)
+    {
+        return Container::getInstance()->makeWith(LengthAwarePaginator::class, compact(
+            'items',
+            'total',
+            'perPage',
+            'currentPage',
+            'options'
+        ));
+    }
+
+
+
+
+
+    // public function paginate($items, $perPage = 15, $page = null, $options = [])
+    // {
+    //     $page = $page ?: (PaginationPaginator::resolveCurrentPage() ?: 1);
+
+    //     $items = $items instanceof Collection ? $items : Collection::make($items);
+
+    //     return new LengthAwarePaginator($items->forPage($page, $perPage), $items->count(), $perPage, $page, $options);
+    // }
     public function getId($id)
     {
         $size = propertiesproduct::where('productId', $id);
@@ -202,26 +295,41 @@ class ProductController extends Controller
             }
         }
 
-        if (!empty($request->color)) {
-            $deleteColor = propertiesproduct::where('productId', '=', $id)->orWhere('key', '=', 'color')->delete();
+        if ($request->color) {
+            $product->propertyproduct()->where('key', 'color')->delete();
+            $color = $request->color;
+            if (is_array($color)) {
 
+                foreach ($request->color as $itemColor) {
 
-            foreach ($request->color as $itemColor) {
-
+                    $product->propertyproduct()->create([
+                        'key' => 'color',
+                        'value' => $itemColor
+                    ]);
+                }
+            } else {
                 $product->propertyproduct()->create([
                     'key' => 'color',
-                    'value' => $itemColor->color
+                    'value' => $color
                 ]);
             }
         }
         if (!empty($request->size)) {
-            $deleteSize = propertiesproduct::where('productId', '=', $id)->orWhere('key', '=', 'size')->delete();
+            $product->propertyproduct()->where('key', 'size')->delete();
+            $size = $request->size;
+            if (is_array($size)) {
 
-            foreach ($request->size as $itemSize) {
+                foreach ($request->size as $itemSize) {
 
+                    $product->propertyproduct()->create([
+                        'key' => 'size',
+                        'value' => $itemSize
+                    ]);
+                }
+            } else {
                 $product->propertyproduct()->create([
                     'key' => 'size',
-                    'value' => $itemSize->color
+                    'value' => $size
                 ]);
             }
         }

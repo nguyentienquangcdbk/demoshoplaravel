@@ -43,6 +43,7 @@ Route::prefix('product')->group(function () {
     Route::post('/', [ProductController::class, 'add']);
     Route::patch('/{id}', [ProductController::class, 'edit']);
     Route::delete('{id}', [ProductController::class, 'delete']);
+    // Route::get('/', [ProductController::class, 'fliter']);
 });
 
 Route::prefix('img')->group(function () {
